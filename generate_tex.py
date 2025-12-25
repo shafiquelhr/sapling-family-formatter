@@ -223,6 +223,10 @@ def main():
     entries = []
     current_person_id = None
     current_content = []
+    current_generation_title = None
+    
+    # Pattern to detect generation titles (e.g., "First Generation", "Second Generation (Parents)", etc.)
+    generation_title_pattern = r'^(?:\d+(?:st|nd|rd|th)|First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Eleventh|Twelfth)\s+Generation.*$'
     
     # Check if the file contains any anchor patterns
     has_anchors = any(line.strip().startswith('##ANCHOR:i') for line in lines)
@@ -230,19 +234,27 @@ def main():
     if has_anchors:
         # Original processing for files with anchors
         for line in lines:
-            if line.strip().startswith('##ANCHOR:i'):
+            stripped_line = line.strip()
+            
+            # Check if this line is a generation title
+            if re.match(generation_title_pattern, stripped_line, re.IGNORECASE):
+                # Store the generation title to be added before the next person entry
+                current_generation_title = stripped_line
+                continue
+            
+            if stripped_line.startswith('##ANCHOR:i'):
                 # If we have a previous entry, save it
                 if current_person_id is not None and current_content:
-                    entries.append((current_person_id, '\n'.join(current_content).strip()))
+                    entries.append((current_person_id, '\n'.join(current_content).strip(), None))
                     current_content = []
                 
                 # Extract new person ID
-                match = re.search(r'##ANCHOR:i(\d+)##', line.strip())
+                match = re.search(r'##ANCHOR:i(\d+)##', stripped_line)
                 if match:
                     current_person_id = match.group(1)
                 else:
                     current_person_id = None
-                    print(f"Warning: Could not extract person_id from anchor: '{line.strip()}'")
+                    print(f"Warning: Could not extract person_id from anchor: '{stripped_line}'")
             else:
                 # Add line to current content if we have a person ID
                 if current_person_id is not None:
@@ -250,7 +262,54 @@ def main():
         
         # Add the last entry if there is one
         if current_person_id is not None and current_content:
-            entries.append((current_person_id, '\n'.join(current_content).strip()))
+            entries.append((current_person_id, '\n'.join(current_content).strip(), None))
+        
+        # Now process entries and associate generation titles with the first person of each generation
+        final_entries = []
+        pending_generation_title = None
+        
+        # Re-parse to properly associate generation titles
+        current_person_id = None
+        current_content = []
+        current_generation_title = None
+        
+        for line in lines:
+            stripped_line = line.strip()
+            
+            # Check if this line is a generation title
+            if re.match(generation_title_pattern, stripped_line, re.IGNORECASE):
+                pending_generation_title = stripped_line
+                continue
+            
+            if stripped_line.startswith('##ANCHOR:i'):
+                # If we have a previous entry, save it
+                if current_person_id is not None and current_content:
+                    final_entries.append((current_person_id, '\n'.join(current_content).strip(), current_generation_title))
+                    current_generation_title = None  # Reset after using it
+                    current_content = []
+                
+                # Extract new person ID
+                match = re.search(r'##ANCHOR:i(\d+)##', stripped_line)
+                if match:
+                    current_person_id = match.group(1)
+                    # Assign the pending generation title to this person
+                    if pending_generation_title:
+                        current_generation_title = pending_generation_title
+                        pending_generation_title = None
+                else:
+                    current_person_id = None
+                    print(f"Warning: Could not extract person_id from anchor: '{stripped_line}'")
+            else:
+                # Add line to current content if we have a person ID
+                if current_person_id is not None:
+                    current_content.append(line)
+        
+        # Add the last entry if there is one
+        if current_person_id is not None and current_content:
+            final_entries.append((current_person_id, '\n'.join(current_content).strip(), current_generation_title))
+        
+        # Replace entries with final_entries
+        entries = final_entries
     else:
         # Alternative processing for files without anchors
         print("No anchor patterns found in input file. Processing by person entries...")
@@ -297,7 +356,14 @@ def main():
     
     # Generate output
     with open(output_file, 'w', encoding='utf-8') as output:
-        for entry_idx, (person_id, entry_content) in enumerate(entries):
+        previous_had_generation_title = False
+        
+        for entry_idx, (person_id, entry_content, generation_title) in enumerate(entries):
+            # Output generation title if present
+            if generation_title:
+                output.write(f"\\generationtitle{{{generation_title}}}\n\n")
+                previous_had_generation_title = True
+            
             lines = entry_content.split('\n')
             if not lines:
                 continue
@@ -666,8 +732,15 @@ def main():
                 i += 1
             
             # Add divider line for all except the last entry
+            # BUT: don't add divider if the current entry has a generation title
             if entry_idx < len(entries) - 1:
-                output.write("\\dividerline\n\n")
+                # Check if the NEXT entry has a generation title
+                next_entry = entries[entry_idx + 1]
+                next_has_generation_title = next_entry[2] is not None if len(next_entry) > 2 else False
+                
+                # Only add divider if next entry doesn't have a generation title
+                if not next_has_generation_title:
+                    output.write("\\dividerline\n\n")
     
     print(f"Successfully converted {input_file} to {output_file}")
 
