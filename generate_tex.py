@@ -382,8 +382,18 @@ def main():
                     line.lower().startswith(("his child", "her child", "the child")) or
                     ("married" in line.lower() and not line[0].isupper())): # Heuristic: if 'married' is present and it's not a new sentence
                     break
-                # If line starts with [ (likely a continuation with a link), add it
-                if line and (line.startswith('[') or not line[0].isupper()):
+                # Only join if previous line ends with 'and' and current starts with '['
+                # This handles "son of X and\n[Y]" without breaking standalone links
+                prev_line = main_line_parts[-1] if main_line_parts else ""
+                if prev_line.strip().endswith(' and') and line.startswith('['):
+                    main_line_parts.append(line)
+                    i += 1
+                elif prev_line.count('[') > prev_line.count(']'):
+                    # Previous line has unclosed link, continue it
+                    main_line_parts.append(line)
+                    i += 1
+                elif i == 1 and line and not line[0].isupper() and not line.startswith('['):
+                    # Lowercase continuation of first line only (wrapped name)
                     main_line_parts.append(line)
                     i += 1
                 else:
@@ -392,11 +402,20 @@ def main():
             main_line = ' '.join(main_line_parts)
             
             # Extract person entry number and name/additional info
-            match = re.match(r'^(\d+)\.?\s+(.*?)(?:,\s+(.*))?$', main_line)
-            if match:
-                entry_number = match.group(1).strip()  # This is the person's unique number
-                name = match.group(2).strip()
-                additional_info = match.group(3) if match.group(3) else ""
+            # Split at comma BEFORE bio markers, not first comma (handles titles with commas)
+            entry_match = re.match(r'^(\d+)\.?\s+(.+)$', main_line)
+            if entry_match:
+                entry_number = entry_match.group(1).strip()
+                rest = entry_match.group(2).strip()
+                # Find comma followed by bio marker
+                bio_pattern = r',\s+(son of|daughter of|was born|born|died|baptized|christened|married)'
+                split_match = re.search(bio_pattern, rest, re.IGNORECASE)
+                if split_match:
+                    name = rest[:split_match.start()].strip()
+                    additional_info = rest[split_match.start()+1:].strip()
+                else:
+                    name = rest
+                    additional_info = ""
             else:
                 # Try with just name and additional info
                 match = re.match(r'^(.*?)(?:,\s+(.*))?$', main_line)
