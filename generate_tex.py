@@ -25,6 +25,53 @@ def escape_latex(text):
     
     return text
 
+def join_multiline_text(text_lines, start_idx):
+    """
+    Join lines that are part of the same logical text block.
+    Handles markdown links split across lines.
+    Returns: (joined_text, next_index)
+    """
+    if start_idx >= len(text_lines):
+        return "", start_idx
+    
+    result_parts = [text_lines[start_idx].strip()]
+    i = start_idx + 1
+    
+    while i < len(text_lines):
+        line = text_lines[i].strip()
+        
+        # Stop at empty lines
+        if not line:
+            break
+        
+        # Stop at section markers
+        if (line.startswith("General Notes:") or 
+            line.startswith("Biography:") or
+            line.lower().startswith(("his child", "her child", "the child", "children from"))):
+            break
+        
+        # Join if:
+        # 1. Previous line has unclosed bracket (link split across lines)
+        # 2. Previous line ends with "and" and current starts with "["
+        # 3. Current line starts with lowercase (continuation)
+        prev_line = result_parts[-1] if result_parts else ""
+        
+        should_join = False
+        if prev_line.count('[') > prev_line.count(']'):
+            should_join = True  # Unclosed link
+        elif prev_line.strip().endswith(' and') and line.startswith('['):
+            should_join = True  # Parent reference
+        elif line and not line[0].isupper() and not line.startswith('['):
+            should_join = True  # Lowercase continuation
+        
+        if should_join:
+            result_parts.append(line)
+            i += 1
+        else:
+            break
+    
+    return ' '.join(result_parts), i
+
 def process_text(text):
     """Process text for LaTeX output, including links and formatting."""
     # First, convert links to LaTeX
@@ -121,7 +168,8 @@ def process_child_entries(start_idx, lines, output):
             k += 1  # Skip empty lines
             continue
         
-        child_line = lines[k].strip()
+        # Join multiline child entries
+        child_line, next_k = join_multiline_text(lines, k)
         
         # Skip if we've reached another section
         if child_line == "General Notes:" or child_line == "Biography:" or "married" in child_line:
@@ -564,7 +612,9 @@ def main():
                             (len(name.split()) > 0 and current_line.lower().startswith(name.split()[0].lower()))
                         ):
                             is_marriage_found_in_notes = True
-                            marriage_line_in_notes = current_line
+                            # Join multiline marriage text
+                            marriage_text, next_idx = join_multiline_text(lines, j)
+                            marriage_line_in_notes = marriage_text
                             
                             # Check if the next non-empty line is a child heading
                             next_j = j + 1
@@ -695,8 +745,11 @@ def main():
                         # We already wrote one newline at the end of General Notes, but we need one more for proper spacing
                         output.write("\n")
                     
+                    # Join multiline marriage text
+                    marriage_text, next_i = join_multiline_text(lines, i)
+                    
                     # Process the marriage line with LaTeX formatting commands
-                    marriage_line = process_text(line)
+                    marriage_line = process_text(marriage_text)
                     
                     # Use the marriage command which now has proper spacing built in
                     # The \marriage command in LaTeX already includes \vspace{0.5em} and proper indentation
