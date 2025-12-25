@@ -49,8 +49,8 @@ def process_text(text):
             # Create a hyperlink to the person
             result += f"\\textcolor{{accent}}{{\\textbf{{\\underline{{\\hyperlink{{person{person_id}}}{{\\breakablename{{{escape_latex(name)}}}}}}}}}}}"
         elif target.startswith('http'):
-            # Create a link to an external URL
-            result += f"\\textcolor{{accent}}{{\\href{{{target}}}{{{escape_latex(name)}}}}}"
+            # Create a link to an external URL - escape the URL for LaTeX \href parameter
+            result += f"\\textcolor{{accent}}{{\\href{{{escape_url(target)}}}{{{escape_latex(name)}}}}}"
         else:
             # Unknown link type, just escape it
             result += escape_latex(match.group(0))
