@@ -226,7 +226,8 @@ def main():
     current_generation_title = None
     
     # Pattern to detect generation titles (e.g., "First Generation", "Second Generation (Parents)", etc.)
-    generation_title_pattern = r'^(?:\d+(?:st|nd|rd|th)|First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Eleventh|Twelfth)\s+Generation.*$'
+    # Supports both numeric (1st, 2nd, 100th, etc.) and word-based (First, Second, Hundredth, etc.)
+    generation_title_pattern = r'^(?:\d+(?:st|nd|rd|th)|First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Eleventh|Twelfth|Thirteenth|Fourteenth|Fifteenth|Sixteenth|Seventeenth|Eighteenth|Nineteenth|Twentieth|Thirtieth|Fortieth|Fiftieth|Sixtieth|Seventieth|Eightieth|Ninetieth|Hundredth)\s+Generation.*$'
     
     # Check if the file contains any anchor patterns
     has_anchors = any(line.strip().startswith('##ANCHOR:i') for line in lines)
