@@ -173,4 +173,4 @@ python split_file.py -h
 **Pro tip**: Always use `--dry-run` first to preview the operation before actually splitting!
 
 ### Actual Latex Command Example
-xelatex -output-directory="D:\Kharcha Paani\manzoor\reports\r-five" -jobname="Ancestors_of_Blake_Tonda" main_template.tex
+xelatex -output-directory="output/" -jobname="Ancestors_Report" main_template.tex
