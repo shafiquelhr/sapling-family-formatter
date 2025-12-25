@@ -369,8 +369,27 @@ def main():
             if not lines:
                 continue
             
-            # Process main entry line
-            main_line = lines[0].strip()
+            # Process main entry line - join continuation lines
+            # Some entries span multiple lines, so we need to join them
+            main_line_parts = [lines[0].strip()]
+            i = 1
+            while i < len(lines):
+                line = lines[i].strip()
+                # Stop if we hit a section marker (General Notes, Biography, marriage, or child headings)
+                # Note: 'name' is not yet defined here, so the marriage check is simplified.
+                if (line.startswith("General Notes:") or 
+                    line.startswith("Biography:") or
+                    line.lower().startswith(("his child", "her child", "the child")) or
+                    ("married" in line.lower() and not line[0].isupper())): # Heuristic: if 'married' is present and it's not a new sentence
+                    break
+                # If line starts with [ (likely a continuation with a link), add it
+                if line and (line.startswith('[') or not line[0].isupper()):
+                    main_line_parts.append(line)
+                    i += 1
+                else:
+                    break
+            
+            main_line = ' '.join(main_line_parts)
             
             # Extract person entry number and name/additional info
             match = re.match(r'^(\d+)\.?\s+(.*?)(?:,\s+(.*))?$', main_line)
@@ -432,14 +451,15 @@ def main():
             suffixes = ["Jr.", "Sr.", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
             
             # Improved approach for detecting suffixes - check for specific patterns
-            # Check for specific suffix patterns with regex - enhanced pattern
-            suffix_match = re.search(r'(.*?(?:\s+(?:Jr\.|Sr\.|II|III|IV|V|VI|VII|VIII|IX|X)\.?))(?:\s+(.*))?$', name_with_suffix, re.IGNORECASE)
-            if suffix_match:
+            # IMPORTANT: Don't split if the suffix is followed by a title (indicated by dash -)
+            # Only split if suffix is followed by: end of string, or biographical markers (son of, daughter of, was born, etc.)
+            suffix_match = re.search(r'(.*?(?:\s+(?:Jr\.|Sr\.|II|III|IV|V|VI|VII|VIII|IX|X)\.?))(?:\s+(son of|daughter of|was born|born|died|baptized)\s+(.*))?$', name_with_suffix, re.IGNORECASE)
+            if suffix_match and suffix_match.group(2):  # Only split if there's a biographical marker after the suffix
                 # Extract the name with suffix
                 name_with_suffix = suffix_match.group(1).strip()
                 # If there's anything after the suffix that's not part of the name, move it to additional_info
                 if suffix_match.group(2):
-                    rest_of_line = suffix_match.group(2).strip()
+                    rest_of_line = f"{suffix_match.group(2)} {suffix_match.group(3)}".strip() if suffix_match.group(3) else suffix_match.group(2).strip()
                     if additional_info:
                         additional_info = f"{rest_of_line}, {additional_info}"
                     else:
