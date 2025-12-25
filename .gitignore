@@ -1,0 +1,50 @@
+# Output files
+parsed_output*.tex
+test_document.tex
+
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.pdf
+*.synctex.gz
+*.toc 
+*.tex
+
+# Main project directories
+1. Kellie Dora Rogers/
+2. Matthew Sherman Nonemacher/
+3. Tanya Lynn Hotton/
+4. Henkelmann/
+
+# Subdirectories within 1. Kellie Dora Rogers/
+1. Kellie Dora Rogers/Legacies/
+1. Kellie Dora Rogers/latex-prettify/
+1. Kellie Dora Rogers/overleaf/
+1. Kellie Dora Rogers/overleaf/latex-gene-formatter/
+
+# Subdirectories within 2. Matthew Sherman Nonemacher/
+2. Matthew Sherman Nonemacher/Overleaf/
+2. Matthew Sherman Nonemacher/Overleaf/outputs/
+2. Matthew Sherman Nonemacher/Overleaf/assets/
+2. Matthew Sherman Nonemacher/latexer/
+2. Matthew Sherman Nonemacher/latexer/outputs/
+2. Matthew Sherman Nonemacher/latexer/splits/
+2. Matthew Sherman Nonemacher/genealogy_project/
+2. Matthew Sherman Nonemacher/genealogy_project/src/
+2. Matthew Sherman Nonemacher/requirements/
+
+# Subdirectories within Legacies project
+1. Kellie Dora Rogers/Legacies/src/
+1. Kellie Dora Rogers/Legacies/public/
+1. Kellie Dora Rogers/Legacies/-p/
+1. Kellie Dora Rogers/Legacies/src/js/
+1. Kellie Dora Rogers/Legacies/public/fonts/
+1. Kellie Dora Rogers/Legacies/public/images/
+
+# Subdirectories within Overleaf assets
+2. Matthew Sherman Nonemacher/Overleaf/assets/fonts/
+2. Matthew Sherman Nonemacher/Overleaf/assets/fonts/EBGaramond/
+2. Matthew Sherman Nonemacher/Overleaf/assets/fonts/PublicSans/ 
+
+
