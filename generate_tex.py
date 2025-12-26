@@ -56,6 +56,8 @@ def join_multiline_text(text_lines, start_idx):
         # 3. Current line starts with lowercase (continuation)
         # 4. Line starts with '(#' or '](#' - broken link reference continuation
         # 5. Previous line ends with ']' and current starts with '(' - split link syntax
+        # 6. Previous line ends with comma - likely incomplete location/address
+        # 7. Line doesn't start with roman numeral - continuation of child entry
         prev_line = result_parts[-1] if result_parts else ""
         
         should_join = False
@@ -67,8 +69,14 @@ def join_multiline_text(text_lines, start_idx):
             should_join = True  # Broken link reference - e.g., "(#i10432)" on separate line
         elif prev_line.strip().endswith(']') and line.startswith('(#'):
             should_join = True  # Split markdown link - [Name] on one line, (#iXXXX) on next
+        elif prev_line.strip().endswith(','):
+            should_join = True  # Previous line ends with comma - likely incomplete (e.g., "Olmsted,")
         elif line and not line[0].isupper() and not line.startswith('['):
             should_join = True  # Lowercase continuation
+        elif not re.match(r'^([ivxlcdm]+\.|\(\d+\)\s+[ivxlcdm]+\.)', line, re.IGNORECASE):
+            # Line doesn't start with roman numeral pattern - must be continuation
+            # This catches cases like "MN, at age 64." that follow child entries
+            should_join = True
         
         if should_join:
             result_parts.append(line)
@@ -296,7 +304,7 @@ def process_child_entries(start_idx, lines, output):
                         # Just bold the entire line as a fallback
                         output.write(f"\\childentry{{\\textbf{{{process_text(child_line)}}}}}{{}}\n\n")
         
-        k += 1
+        k = next_k  # Use the next index returned by join_multiline_text()
     
     return k
 
