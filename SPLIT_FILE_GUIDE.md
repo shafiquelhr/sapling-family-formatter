@@ -1,14 +1,15 @@
 # Split File Tool - User Guide
 
 ## Overview
-Enhanced genealogy file splitter that breaks large text files into smaller chunks at anchor points (`##ANCHOR:iXXXXX##`). Now includes command-line interface, error handling, and flexible configuration.
+
+Enhanced genealogy file splitter that breaks large text files into smaller chunks at anchor points (`##ANCHOR:iXXXXX##`). Includes command-line interface, error handling, and flexible configuration.
 
 ## 🚀 Quick Start (Recommended)
 
 **For most users, just run one of these:**
 
 ```bash
-# Split your file into 5 chunks with custom naming
+# Split your file into chunks with custom naming
 python split_file.py "your_file.txt" "output_folder/" --lines 14200 --prefix "parsed_chunked_output"
 
 # Preview what will happen first (recommended)
@@ -16,6 +17,65 @@ python split_file.py "your_file.txt" "output_folder/" --lines 14200 --prefix "pa
 ```
 
 **That's it!** The tool handles everything else automatically.
+
+---
+
+## Complete Workflow
+
+This guide walks you through the entire process from raw text file to formatted PDF.
+
+### Step 1: Split Large File (Optional but Recommended)
+
+If your genealogy file is very large (50,000+ lines), split it into manageable chunks:
+
+```bash
+python split_file.py "Ancestors_Report.txt" "chunks/" --lines 14200 --prefix "parsed_chunked_output"
+```
+
+This creates files like:
+- `chunks/parsed_chunked_output1.txt`
+- `chunks/parsed_chunked_output2.txt`
+- `chunks/parsed_chunked_output3.txt`
+- etc.
+
+### Step 2: Convert Each Chunk to LaTeX
+
+Use `generate_tex.py` to convert each text chunk to LaTeX:
+
+```bash
+python generate_tex.py "chunks/parsed_chunked_output1.txt" "tex-output/parsed_chunked_output1.tex"
+python generate_tex.py "chunks/parsed_chunked_output2.txt" "tex-output/parsed_chunked_output2.tex"
+python generate_tex.py "chunks/parsed_chunked_output3.txt" "tex-output/parsed_chunked_output3.tex"
+python generate_tex.py "chunks/parsed_chunked_output4.txt" "tex-output/parsed_chunked_output4.tex"
+python generate_tex.py "chunks/parsed_chunked_output5.txt" "tex-output/parsed_chunked_output5.tex"
+```
+
+### Step 3: Update main_template.tex
+
+Edit `main_template.tex` to include your generated chunks. Find the section near the bottom:
+
+```latex
+% ======== DROP CONTENT BELOW ========
+
+\input{path/to/tex-output/parsed_chunked_output1.tex}
+\input{path/to/tex-output/parsed_chunked_output2.tex}
+\input{path/to/tex-output/parsed_chunked_output3.tex}
+\input{path/to/tex-output/parsed_chunked_output4.tex}
+\input{path/to/tex-output/parsed_chunked_output5.tex}
+
+% ======== DROP CONTENT ENDS ========
+```
+
+Also update the report title:
+```latex
+\reportmaintitle{Ancestors of Your Person Name}
+```
+
+### Step 4: Compile to PDF
+
+```bash
+xelatex -output-directory="output/" -jobname="Family_Report" main_template.tex
+```
 
 ---
 
@@ -43,12 +103,6 @@ python split_file.py "input.txt" "output/" --lines 10000 --prefix "split_part"
 
 # Get help
 python split_file.py --help
-```
-
-### Backward Compatibility
-```bash
-# Old way still works (uses hardcoded defaults)
-python split_file.py
 ```
 
 ---
@@ -102,8 +156,8 @@ If no arguments provided, uses hardcoded defaults for backward compatibility.
 
 ### Genealogy Report Processing
 ```bash
-# Split Blake Tonda report into 5 chunks
-python split_file.py "Blake Tonda - Ancestor Report HTML.txt" "D:/reports/chunks/" --lines 14200 --prefix "parsed_chunked_output"
+# Split a large ancestor report into 5 chunks
+python split_file.py "Jeremiah Parranto - Ancestors.txt" "chunks/" --lines 14200 --prefix "parsed_chunked_output"
 
 # Results in:
 # parsed_chunked_output1.txt (lines 1-14,211)
@@ -125,9 +179,28 @@ python split_file.py "my_big_file.txt" "test_output/" --dry-run
 
 ---
 
+## XeLaTeX Compilation
+
+After generating your .tex files, compile to PDF:
+
+```bash
+# Basic compilation
+xelatex main_template.tex
+
+# With custom output directory and job name
+xelatex -output-directory="output/" -jobname="Ancestors_Report" main_template.tex
+
+# Windows example with full paths
+xelatex -output-directory="D:\reports\output" -jobname="Family_Report_v1" main_template.tex
+```
+
+**Note:** You may need to run xelatex twice if you have hyperlinks to ensure all cross-references are resolved.
+
+---
+
 ## Error Handling
 
-The tool now validates everything and gives clear error messages:
+The tool validates everything and gives clear error messages:
 
 - ✅ **File not found**: "Error: Input file 'filename.txt' not found!"
 - ✅ **Permission issues**: "Error: Cannot create/access output directory"
@@ -136,24 +209,13 @@ The tool now validates everything and gives clear error messages:
 
 ---
 
-## Migration from Old Version
+## Tips & Best Practices
 
-**Old way (still works):**
-```bash
-python split_file.py  # Uses hardcoded values
-```
-
-**New recommended way:**
-```bash
-python split_file.py "your_file.txt" "output_dir/" --lines 14200 --prefix "parsed_chunked_output"
-```
-
-**Advantages of new way:**
-- No code editing required
-- Flexible file naming
-- Better error handling
-- Preview capability
-- Works with any file/directory
+1. **Always use `--dry-run` first** to preview the operation before actually splitting
+2. **Use consistent naming** with `--prefix` for easier file management
+3. **Keep chunk sizes reasonable** (~14,000 lines) to avoid LaTeX memory issues
+4. **Create a tex-output folder** to keep generated LaTeX files organized
+5. **Back up your original files** before processing
 
 ---
 
@@ -163,14 +225,11 @@ python split_file.py "your_file.txt" "output_dir/" --lines 14200 --prefix "parse
 # Most common command for genealogy reports
 python split_file.py "report.txt" "chunks/" --lines 14200 --prefix "parsed_chunked_output"
 
-# Preview first (recommended)
-python split_file.py "report.txt" "chunks/" --lines 14200 --prefix "parsed_chunked_output" --dry-run
+# Convert to LaTeX
+python generate_tex.py "chunks/parsed_chunked_output1.txt" "tex-output/parsed_chunked_output1.tex"
 
-# Get help
-python split_file.py -h
+# Compile to PDF
+xelatex -output-directory="output/" -jobname="Ancestors_Report" main_template.tex
 ```
 
 **Pro tip**: Always use `--dry-run` first to preview the operation before actually splitting!
-
-### Actual Latex Command Example
-xelatex -output-directory="output/" -jobname="Ancestors_Report" main_template.tex

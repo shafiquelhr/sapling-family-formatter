@@ -1,0 +1,243 @@
+\documentclass[12pt]{article}
+\usepackage[
+  top=0.8in,        % Decrease top margin
+  bottom=0.8in,       % Keep footer margin
+  left=0.8in,        % keep side margins the same
+  right=0.8in,
+  headheight=14pt,  % Height reserved for header (must be set if using fancyhdr)
+  headsep=8pt,      % Space between header and body
+  marginpar=0pt     % Optional: remove extra margin space for margin notes
+]{geometry}
+% XeTeX options for better line breaking
+\XeTeXlinebreaklocale "en"
+\XeTeXlinebreakskip = 0pt plus 1pt
+\usepackage{xcolor}
+\usepackage{fontspec}
+\usepackage{titlesec}
+\usepackage[breaklinks=true]{hyperref}
+\usepackage{url}
+\usepackage{xurl}  % Better URL breaking
+\usepackage{xspace}  % Better spacing after macros
+\usepackage{microtype}  % Better typography and spacing
+\usepackage{ragged2e}  % Helps with breaking but keeps reasonable formatting
+\usepackage{tikz}
+\usepackage{fancyhdr}
+
+
+% ======== FONTS ========
+% \setmainfont{assets/fonts/PublicSans/PublicSans-Regular.ttf}[
+%   BoldFont=assets/fonts/PublicSans/PublicSans-Bold.ttf,
+%   ItalicFont=assets/fonts/PublicSans/PublicSans-Italic.ttf,
+%   BoldItalicFont=assets/fonts/PublicSans/PublicSans-BoldItalic.ttf
+% ]
+
+% Set main font
+\setmainfont{PublicSans-Regular.ttf}[
+  Path=assets/fonts/PublicSans/,
+  BoldFont=PublicSans-Bold.ttf,
+  ItalicFont=PublicSans-Italic.ttf,
+  BoldItalicFont=PublicSans-BoldItalic.ttf
+]
+
+% Set header font
+\newfontfamily\headerfont{EBGaramond-Regular.ttf}[
+  Path=assets/fonts/EBGaramond/,
+  BoldFont=EBGaramond-Bold.ttf,
+  ItalicFont=EBGaramond-Italic.ttf,
+  BoldItalicFont=EBGaramond-BoldItalic.ttf
+]
+
+
+% \newfontfamily\headerfont{assets/fonts/EBGaramond/EBGaramond-Regular.ttf}[
+%   BoldFont=assets/fonts/EBGaramond/EBGaramond-Bold.ttf,
+%   ItalicFont=assets/fonts/EBGaramond/EBGaramond-Italic.ttf,
+%   BoldItalicFont=assets/fonts/EBGaramond/EBGaramond-BoldItalic.ttf
+% ]
+
+% ======== COLORS ========
+\definecolor{accent}{HTML}{a85733}
+\definecolor{olivegreen}{HTML}{656137}
+\definecolor{divider}{HTML}{2f3d22}
+
+% ======== HYPERLINK STYLE ========
+\hypersetup{
+  colorlinks=true,
+  linkcolor=accent,
+  urlcolor=accent,
+  breaklinks=true,
+  pdfborder={0 0 0} % No border around links
+}
+
+% We need to tell hyperref to break long links
+\usepackage{seqsplit}
+\newcommand{\breakablelink}[1]{\seqsplit{#1}}
+
+% Configure XeTeX for better line breaking
+\XeTeXlinebreaklocale "en" 
+\XeTeXlinebreakpenalty=0
+\setlength\parindent{0pt}
+
+% ======== HEADER STYLE ========
+\titleformat{\section}
+  {\centering\Large\bfseries\headerfont\color{olivegreen}}
+  {}
+  {0pt}
+  {}
+
+\titlespacing*{\section}{0pt}{16pt}{6pt}
+
+% ======== BADGE MACRO (CIRCULAR AUTO-SIZED) ========
+\newcommand{\badge}[1]{%
+  \tikz[baseline=(char.base)]{
+    \node[
+      text=accent,
+      inner sep=0pt,
+      font=\sffamily\bfseries\small
+    ] (char) {#1};
+  }%
+}
+
+% Helper command to scale font size based on number of digits
+\newcommand{\scalefontfordigits}[1]{%
+  \ifnum\pdfstrcmp{\detokenize{#1}}{\number\numexpr#1\relax}=0 % Check if it's a number
+    \ifnum#1>999999 % Very large numbers (7+ digits)~
+      \tiny
+    \else\ifnum#1>9999 % Large numbers (5-6 digits)
+      \scriptsize
+    \else\ifnum#1>999 % Medium numbers (4 digits)
+      \small
+    \fi\fi\fi
+  \fi
+}
+
+% ======== ENTRY MACROS ========
+\newcommand{\entry}[4]{%
+  \hypertarget{person#1}{}%
+  \noindent\badge{#2}\par
+  \noindent #3 #4\par\vspace{0.01em}
+}
+
+\newcommand{\marriage}[1]{%
+  \vspace{0.5em}\par\noindent\hspace*{2em}\hangindent=2em\hangafter=1 #1\par
+}
+
+\newcommand{\childrenheading}{%
+  \vspace{0.5em}\noindent\hspace*{2em}\textbf{The child from this marriage was:}\par\vspace{0.5em}
+}
+
+\newcommand{\childrenheadingsingular}{%
+  \vspace{0.5em}\noindent\hspace*{2em}\textbf{The child from this marriage was:}\par\vspace{0.5em}
+}
+
+\newcommand{\childrenheadingplural}{%
+  \vspace{0.5em}\noindent\hspace*{2em}\textbf{Children from this marriage were:}\par\vspace{0.5em}
+}
+
+% Add His/Her children heading variants with the same styling
+\newcommand{\hischildheadingsingular}{%
+  \vspace{0.5em}\noindent\hspace*{2em}\textbf{His child was:}\par\vspace{0.5em}
+}
+
+\newcommand{\hischildheadingplural}{%
+  \vspace{0.5em}\noindent\hspace*{2em}\textbf{His children were:}\par\vspace{0.5em}
+}
+
+\newcommand{\herchildheadingsingular}{%
+  \vspace{0.5em}\noindent\hspace*{2em}\textbf{Her child was:}\par\vspace{0.5em}
+}
+
+\newcommand{\herchildheadingplural}{%
+  \vspace{0.5em}\noindent\hspace*{2em}\textbf{Her children were:}\par\vspace{0.5em}
+}
+
+\newcommand{\childentry}[2]{%
+  \noindent\hspace*{2em}\hangindent=3.2em\hangafter=1%
+  #1 #2\par\vspace{0.5em}
+}
+
+\newcommand{\childentrylinked}[3]{%
+  \noindent\hspace*{2em}\hangindent=3.2em\hangafter=1%
+  \badge{#1} #2. #3\par\vspace{0.5em}
+}
+
+\newcommand{\childentryplain}[3]{%
+  \noindent\hspace*{2em}\hangindent=3.2em\hangafter=1%
+  #2. \textbf{#1} #3\par\vspace{0.5em}
+}
+
+% ======== GENERATION TITLE ========
+\newcommand{\generationtitle}[1]{%
+  \section*{#1}
+  \vspace{-0.2em}
+  \sectiondivider
+}
+
+% ======== CUSTOM MACCRO FOR REPORT TITLE WITH LARGE FONT SIZE AND BOLDER FONT ========
+\newcommand{\reportmaintitle}[1]{%
+  \begin{center}
+    {\headerfont\color{olivegreen}\bfseries\LARGE #1}
+  \end{center}
+  \sectiondivider
+}
+
+
+% ======== DIVIDER LINES ========
+\newcommand{\dividerline}{%
+  \vspace{1em}
+  \begin{center}
+    \color{divider}\rule{5cm}{0.4pt}
+  \end{center}
+  \vspace{1em}
+}
+
+\newcommand{\sectiondivider}{%
+  \begin{center}
+    \color{divider}\rule{5cm}{0.5pt}
+  \end{center}
+  \vspace{1.2em}
+}
+
+% ======== FOOTER ========
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.6pt}
+\lfoot{\small\textsf{Sapling Platinum Report}}
+\rfoot{\small\thepage}
+
+% ======== TEXT WRAPPING SETTINGS ========
+\sloppy  % Allow flexible spaces to avoid overfull boxes
+\emergencystretch=1em % Add just enough emergency stretch
+\hyphenpenalty=50     % Make hyphenation more likely
+\exhyphenpenalty=50   % Make explicit hyphen breaks more likely
+\righthyphenmin=2     % Allow hyphenation after just 2 characters 
+\lefthyphenmin=2      % Allow hyphenation with just 2 characters left
+
+% Use RaggedRight from ragged2e for better line breaking
+\RaggedRight
+\setlength{\RaggedRightParindent}{0pt}
+
+% Very simple approach for breaking names
+\newcommand{\breakablename}[1]{%
+  \begingroup
+  \hyphenchar\font=`\- % Enable hyphenation
+  \def\-{\discretionary{-}{}{-}}% Make explicit hyphens breakable
+  #1%
+  \endgroup
+}
+
+% ======== BEGIN DOCUMENT ========
+\begin{document}
+
+\reportmaintitle{Ancestors of Jeremiah Parranto}
+
+% ======== DROP CONTENT BELOW ========
+
+\input{../r-eight/revised/tex-output/parsed_chunked_output1.tex}
+\input{../r-eight/revised/tex-output/parsed_chunked_output2.tex}
+\input{../r-eight/revised/tex-output/parsed_chunked_output3.tex}
+\input{../r-eight/revised/tex-output/parsed_chunked_output4.tex}
+\input{../r-eight/revised/tex-output/parsed_chunked_output5.tex}
+
+% ======== DROP CONTENT ENDS ========
+\end{document}

@@ -54,6 +54,8 @@ def join_multiline_text(text_lines, start_idx):
         # 1. Previous line has unclosed bracket (link split across lines)
         # 2. Previous line ends with "and" and current starts with "["
         # 3. Current line starts with lowercase (continuation)
+        # 4. Line starts with '(#' or '](#' - broken link reference continuation
+        # 5. Previous line ends with ']' and current starts with '(' - split link syntax
         prev_line = result_parts[-1] if result_parts else ""
         
         should_join = False
@@ -61,6 +63,10 @@ def join_multiline_text(text_lines, start_idx):
             should_join = True  # Unclosed link
         elif prev_line.strip().endswith(' and') and line.startswith('['):
             should_join = True  # Parent reference
+        elif line.startswith('(#') or line.startswith('](#'):
+            should_join = True  # Broken link reference - e.g., "(#i10432)" on separate line
+        elif prev_line.strip().endswith(']') and line.startswith('(#'):
+            should_join = True  # Split markdown link - [Name] on one line, (#iXXXX) on next
         elif line and not line[0].isupper() and not line.startswith('['):
             should_join = True  # Lowercase continuation
         
@@ -175,74 +181,120 @@ def process_child_entries(start_idx, lines, output):
         if child_line == "General Notes:" or child_line == "Biography:" or "married" in child_line:
             break
         
+        # FIRST: Check if the entire line contains a complete markdown link
+        # This must be done BEFORE any comma-based splitting to preserve links like:
+        # "[Maud of Gloucester, Countess of Chester](#i21940)"
+        full_link_match = re.search(r'\[(.*?)\]\(#?i?(\d+)\)', child_line)
+        
         # Process different types of child entries
         # Type 1: Reference number in parentheses, then roman numeral
-        ref_roman_match = re.match(r'^\((\d+)\)\s+([ivxlcdm]+)\.\s+(.*?)(?:,\s+(.*))?$', child_line, re.IGNORECASE)
+        ref_roman_match = re.match(r'^\((\d+)\)\s+([ivxlcdm]+)\.\s+(.+)$', child_line, re.IGNORECASE)
         if ref_roman_match:
             ref_number = ref_roman_match.group(1)
             roman_numeral = ref_roman_match.group(2)
-            name_part = ref_roman_match.group(3)
-            rest_part = ref_roman_match.group(4) if ref_roman_match.group(4) else ""
+            content_after_numeral = ref_roman_match.group(3)
             
-            # Check if name contains a link
-            link_match = re.search(r'\[(.*?)\]\((.*?)\)', name_part)
+            # Check if content contains a complete markdown link
+            link_match = re.search(r'\[(.*?)\]\((#?i?\d+)\)', content_after_numeral)
             if link_match:
-                # Process the link
-                name_and_link = f"[{link_match.group(1)}]({link_match.group(2)})"
-                processed_name = process_text(name_and_link)
-            else:
-                # Bold the name only
-                processed_name = f"\\textbf{{{process_text(name_part)}}}"
-            
-            if rest_part:
-                # Format with badge for reference number, unbolded roman numeral, and comma after name
-                output.write(f"\\childentry{{\\badge{{{ref_number}}} {roman_numeral}. {processed_name},}}{{{process_text(rest_part)}}}\n\n")
-            else:
-                # No additional info
-                output.write(f"\\childentry{{\\badge{{{ref_number}}} {roman_numeral}. {processed_name}}}{{}}\n\n")
-        else:
-            # Type 2: Just roman numeral
-            roman_match = re.match(r'^([ivxlcdm]+)\.\s+(.*?)(?:(?:,|was)\s+(.*))?$', child_line, re.IGNORECASE)
-            if roman_match:
-                roman_numeral = roman_match.group(1)
-                name_part = roman_match.group(2)
-                rest_part = roman_match.group(3) if roman_match.group(3) else ""
+                # Found a complete link - extract it properly
+                full_link_text = link_match.group(0)  # The entire [...](...) match
+                link_name = link_match.group(1)  # Name inside brackets
+                link_target = link_match.group(2)  # Target inside parentheses
                 
-                # Check if name contains a link
-                link_match = re.search(r'\[(.*?)\]\((.*?)\)', name_part)
-                if link_match:
-                    # Process the link
-                    name_and_link = f"[{link_match.group(1)}]({link_match.group(2)})"
-                    processed_name = process_text(name_and_link)
-                    
-                    if rest_part:
-                        # Add comma after name and include rest of text unbolded
-                        output.write(f"\\childentry{{{roman_numeral}. {processed_name},}}{{{process_text(rest_part)}}}\n\n")
-                    else:
-                        # No additional info, just output the name
-                        output.write(f"\\childentry{{{roman_numeral}. {processed_name}}}{{}}\n\n")
+                # Reconstruct the proper markdown link format
+                name_and_link = f"[{link_name}]({link_target})"
+                processed_name = process_text(name_and_link)
+                
+                # Check if there's anything after the link (additional info)
+                after_link = content_after_numeral[link_match.end():].strip()
+                if after_link.startswith(','):
+                    after_link = after_link[1:].strip()
+                
+                if after_link:
+                    output.write(f"\\childentry{{\\badge{{{ref_number}}} {roman_numeral}. {processed_name},}}{{{process_text(after_link)}}}\n\n")
                 else:
-                    # Bold the name only, fix the spacing issue with comma
-                    name_part = name_part.rstrip()  # Remove trailing spaces
+                    output.write(f"\\childentry{{\\badge{{{ref_number}}} {roman_numeral}. {processed_name}}}{{}}\n\n")
+            else:
+                # No link found - use original comma-splitting logic
+                comma_split = re.match(r'^(.*?)(?:,\s+(.*))?$', content_after_numeral)
+                if comma_split:
+                    name_part = comma_split.group(1).strip()
+                    rest_part = comma_split.group(2) if comma_split.group(2) else ""
                     processed_name = f"\\textbf{{{process_text(name_part)}}}"
                     
                     if rest_part:
-                        # Add comma directly after name (no space) and include rest of text unbolded
-                        output.write(f"\\childentry{{{roman_numeral}. {processed_name},}}{{{process_text(rest_part)}}}\n\n")
+                        output.write(f"\\childentry{{\\badge{{{ref_number}}} {roman_numeral}. {processed_name},}}{{{process_text(rest_part)}}}\n\n")
                     else:
-                        # No additional info, just output the name
+                        output.write(f"\\childentry{{\\badge{{{ref_number}}} {roman_numeral}. {processed_name}}}{{}}\n\n")
+                else:
+                    # Fallback
+                    processed_name = f"\\textbf{{{process_text(content_after_numeral)}}}"
+                    output.write(f"\\childentry{{\\badge{{{ref_number}}} {roman_numeral}. {processed_name}}}{{}}\n\n")
+        else:
+            # Type 2: Just roman numeral (no reference number in parentheses)
+            roman_match = re.match(r'^([ivxlcdm]+)\.\s+(.+)$', child_line, re.IGNORECASE)
+            if roman_match:
+                roman_numeral = roman_match.group(1)
+                content_after_numeral = roman_match.group(2)
+                
+                # Check if content contains a complete markdown link
+                link_match = re.search(r'\[(.*?)\]\((#?i?\d+)\)', content_after_numeral)
+                if link_match:
+                    # Found a complete link - extract it properly
+                    link_name = link_match.group(1)
+                    link_target = link_match.group(2)
+                    
+                    name_and_link = f"[{link_name}]({link_target})"
+                    processed_name = process_text(name_and_link)
+                    
+                    # Check if there's anything after the link
+                    after_link = content_after_numeral[link_match.end():].strip()
+                    if after_link.startswith(','):
+                        after_link = after_link[1:].strip()
+                    
+                    if after_link:
+                        output.write(f"\\childentry{{{roman_numeral}. {processed_name},}}{{{process_text(after_link)}}}\n\n")
+                    else:
+                        output.write(f"\\childentry{{{roman_numeral}. {processed_name}}}{{}}\n\n")
+                else:
+                    # No link - use comma/was splitting
+                    comma_split = re.match(r'^(.*?)(?:(?:,|was)\s+(.*))?$', content_after_numeral)
+                    if comma_split:
+                        name_part = comma_split.group(1).strip()
+                        rest_part = comma_split.group(2) if comma_split.group(2) else ""
+                        processed_name = f"\\textbf{{{process_text(name_part)}}}"
+                        
+                        if rest_part:
+                            output.write(f"\\childentry{{{roman_numeral}. {processed_name},}}{{{process_text(rest_part)}}}\n\n")
+                        else:
+                            output.write(f"\\childentry{{{roman_numeral}. {processed_name}}}{{}}\n\n")
+                    else:
+                        processed_name = f"\\textbf{{{process_text(content_after_numeral)}}}"
                         output.write(f"\\childentry{{{roman_numeral}. {processed_name}}}{{}}\n\n")
             else:
                 # Fallback for any other format
-                # Try to extract a name and additional info
-                parts = child_line.split(',', 1)
-                if len(parts) > 1:
-                    name_part = parts[0].strip()
-                    rest_part = parts[1].strip()
-                    output.write(f"\\childentry{{\\textbf{{{process_text(name_part)}}},}}{{{process_text(rest_part)}}}\n\n")
+                # First check for a complete link in the line
+                link_match = re.search(r'\[(.*?)\]\((#?i?\d+)\)', child_line)
+                if link_match:
+                    processed_name = process_text(link_match.group(0))
+                    after_link = child_line[link_match.end():].strip()
+                    if after_link.startswith(','):
+                        after_link = after_link[1:].strip()
+                    if after_link:
+                        output.write(f"\\childentry{{{processed_name},}}{{{process_text(after_link)}}}\n\n")
+                    else:
+                        output.write(f"\\childentry{{{processed_name}}}{{}}\n\n")
                 else:
-                    # Just bold the entire line as a fallback
-                    output.write(f"\\childentry{{\\textbf{{{process_text(child_line)}}}}}{{}}\n\n")
+                    # No link - try to extract a name and additional info by comma
+                    parts = child_line.split(',', 1)
+                    if len(parts) > 1:
+                        name_part = parts[0].strip()
+                        rest_part = parts[1].strip()
+                        output.write(f"\\childentry{{\\textbf{{{process_text(name_part)}}},}}{{{process_text(rest_part)}}}\n\n")
+                    else:
+                        # Just bold the entire line as a fallback
+                        output.write(f"\\childentry{{\\textbf{{{process_text(child_line)}}}}}{{}}\n\n")
         
         k += 1
     
@@ -612,17 +664,20 @@ def main():
                             (len(name.split()) > 0 and current_line.lower().startswith(name.split()[0].lower()))
                         ):
                             is_marriage_found_in_notes = True
-                            # Join multiline marriage text
+                            # Join multiline marriage text - this joins any broken links across lines
                             marriage_text, next_idx = join_multiline_text(lines, j)
                             marriage_line_in_notes = marriage_text
                             
-                            # Check if the next non-empty line is a child heading
-                            next_j = j + 1
-                            while next_j < len(lines) and not lines[next_j].strip():
-                                next_j += 1
+                            # Update j to skip past all the lines that were joined into marriage_text
+                            # This prevents broken link fragments from being collected into notes
+                            j = next_idx
                             
-                            if next_j < len(lines):
-                                next_line = lines[next_j].strip()
+                            # Check if the next non-empty line is a child heading
+                            while j < len(lines) and not lines[j].strip():
+                                j += 1
+                            
+                            if j < len(lines):
+                                next_line = lines[j].strip()
                                 if (next_line.lower().startswith("his child was:") or
                                     next_line.lower().startswith("his children were:") or
                                     next_line.lower().startswith("her child was:") or
@@ -631,12 +686,11 @@ def main():
                                     # We found a child heading after a marriage line within General Notes
                                     is_child_heading_in_notes = True
                                     child_heading_in_notes = next_line
-                                    j = next_j  # Skip ahead to after the marriage line
-                                    break
                             
-                            # Don't break - we'll handle this separately
-                            j += 1
-                            continue
+                            # Now break out of General Notes collection - marriage line marks the end
+                            # This is the KEY FIX: prevents broken link fragments like "Bennett](#i72795)" 
+                            # from being collected into notes
+                            break
                         
                         # Check for child headings in General Notes
                         if (current_line.lower().startswith("his child was:") or 
@@ -649,8 +703,12 @@ def main():
                             break  # Break out of General Notes when we find a child heading
                         
                         if current_line:  # Only add non-empty lines
-                            notes.append(current_line)
-                        j += 1
+                            # Use join_multiline_text to handle links split across lines
+                            joined_note, next_j = join_multiline_text(lines, j)
+                            notes.append(joined_note)
+                            j = next_j
+                        else:
+                            j += 1
                     
                     # Output the General Notes section
                     output.write(f"\\noindent \\textbf{{General Notes:}}\n")
@@ -707,13 +765,25 @@ def main():
                         bio_content = []
                         
                         # Extract the content of the Biography section
+                        # Use join_multiline_text to properly handle links split across lines
                         while j < len(lines):
                             current_line = lines[j].strip()
-                            if current_line.startswith("married") or current_line == "The child from this marriage was:" or current_line == "Children from this marriage were:":
+                            if not current_line:
+                                j += 1
+                                continue
+                            
+                            # Check for section boundaries
+                            if (current_line.lower().startswith(name.split()[0].lower() if name.split() else "") and "married" in current_line.lower()) or \
+                               current_line == "The child from this marriage was:" or \
+                               current_line == "Children from this marriage were:" or \
+                               current_line.lower().startswith("his child") or \
+                               current_line.lower().startswith("her child"):
                                 break
-                            if current_line:  # Only add non-empty lines
-                                bio_content.append(current_line)
-                            j += 1
+                            
+                            # Join multiline text to handle links split across lines
+                            joined_line, next_j = join_multiline_text(lines, j)
+                            bio_content.append(joined_line)
+                            j = next_j
                         
                         output.write(f"\\noindent \\textbf{{Biography:}}\n")
                         
