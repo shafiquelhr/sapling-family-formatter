@@ -15,20 +15,8 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Obsolete development/debugging scripts (kept locally, not needed in repo)
-add_helper.py
-add_link_check.py
-apply_fix.py
-cleanup_artifacts.py
-find_broken_urls.py
-fix_child_entries.py
-fix_cleanup_escaped.py
-fix_marriage_lines.py
-fix_parsing.py
-fix_standalone_marriage.py
-simplify_cleanup.py
-widen_cleanup.py
-REMAINING_ISSUES.md
+# Development archive (obsolete scripts kept for reference)
+_dev_archive/
 
 
 # Main project directories
